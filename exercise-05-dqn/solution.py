@@ -21,7 +21,7 @@ def _():
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # Exercise 05 — Deep Q-learning with PyTorch
+    # Exercise 05 — Deep Q-learning with PyTorch (Solution)
 
     **Goal:** train a DQN controller for CartPole with continuous observations
     and two discrete actions. Unlike tabular Q-learning, a neural network shares
@@ -44,8 +44,8 @@ def _(nn):
             super().__init__()
             self.net = nn.Sequential(
                 nn.Linear(state_dim, 64), nn.ReLU(),
-                ...,  # TODO: second hidden layer and activation.
-                ...,  # TODO: one unconstrained output per action.
+                nn.Linear(64, 64), nn.ReLU(),
+                nn.Linear(64, action_dim),
             )
 
         def forward(self, states):
@@ -74,12 +74,26 @@ def _(mo):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
+    **Answer:** Q-values are regression outputs and can take any real value.
+    A ReLU would cut off negative values, a sigmoid or tanh would bound them,
+    while CartPole Q-values grow to about 87 for $\gamma=0.99$.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## 2. Experience replay
     Store `(state, action, reward, next_state, terminated)` in a bounded deque.
     Copy state arrays so later mutation cannot alter stored transitions.
     The environment's time limit ends an episode but is not a terminal MDP state.
     Inspect `sample_batch` below: state tensors are `(B,4)`, while actions,
     rewards and terminal flags are `(B,)`. Why sample random minibatches?
+
+    **Answer:** consecutive transitions are strongly correlated. Random
+    minibatches are closer to the i.i.d. samples SGD assumes, and each
+    transition is reused in many updates.
     """)
     return
 
@@ -88,7 +102,7 @@ def _(mo):
 def store(replay, state, action, reward, next_state, terminated):
     # Copy observations: replay should not reference mutable environment arrays.
     transition = (state.copy(), int(action), float(reward), next_state.copy(), bool(terminated))
-    replay.append(...)  # TODO: insert this transition in the bounded deque.
+    replay.append(transition)
 
 
 @app.cell(hide_code=True)
@@ -97,6 +111,9 @@ def _(mo):
     Sampling uniformly from replay breaks up consecutive trajectories. Notice
     that actions are integer indices while rewards and states are floating point.
     What would happen if an action tensor had the wrong dtype for `gather`?
+
+    **Answer:** `gather` needs integer indices. A float action tensor raises
+    a `RuntimeError`.
     """)
     return
 
@@ -142,6 +159,11 @@ def _(mo):
     $B^{-1}\sum_i(Q_w(s_i,a_i)-y_i)^2$. Explain why the target is detached and
     why `gather` selects the sampled action value, rather than the max current value.
 
+    **Answer:** the target is a fixed regression label. Gradients through it
+    would also move the label, so only $Q_w(s_i,a_i)$ is fitted. The
+    transition $(s_i,a_i,r_i,s'_i)$ carries information only about the
+    sampled action $a_i$. The max belongs to the next state, in the target.
+
     Read `train` below: it initializes the target as a copy of the online
     network, waits for 1,000 replay transitions, and copies weights every 100
     environment steps. Exploration decreases from 1 to 0.05.
@@ -154,8 +176,8 @@ def _(torch):
     def make_targets(rewards, next_states, terminated, target_q, gamma):
         # Targets are fixed regression labels during the online-network update.
         with torch.no_grad():
-            next_values = ...  # TODO: maximum target Q-value along the action axis.
-            return ...  # TODO: add reward and mask true terminal transitions.
+            next_values = target_q(next_states).max(dim=1).values
+            return rewards + gamma * (~terminated).float() * next_values
 
     return (make_targets,)
 
