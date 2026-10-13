@@ -84,15 +84,6 @@ def _(mo):
     true $g$, and (3) recover most of it by training $g$ with short-horizon actor-critic (SHAC)
     through a differentiable simulation of plant and MPC.
 
-    Requirements: `leap_c` (main branch, commit `217e1c8`), acados 0.5.3 with its `t_renderer`
-    binary, CPU torch; see the README. The domain code lives in the package `wec/` next to this
-    notebook, structured like a system of [leap-c-lab](https://github.com/leap-c/leap-c-lab): the
-    model and the differentiable plant (`wec/dynamics.py`), linear controllers
-    (`wec/controller.py`), the acados OCP (`wec/acados_ocp.py`) and the MPC as a
-    `ParameterizedPlanner` (`wec/planner.py`); `utils.py` has the evaluation, the training
-    configuration and the plots. The notebook compiles one small acados solver (about 2 s) into
-    a temporary directory.
-
     ## 1. A wave energy converter and its excitation coefficient
 
     A heaving point absorber: a hemispherical buoy (radius 2.5 m, about 59 t including added
@@ -508,6 +499,14 @@ def _(td_lambda_targets, torch):
             lam=0.5,
         ),
     )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    **TODO**: In the following, the SHAC training is implemented. Read the training loop carefully and try to build an understanding how the algorithm backpropagates from the loss to the learnable excitation parameters. You do not need to complete the code to make it run. Try playing around with different parameters and observe what happens.
+    """)
     return
 
 
